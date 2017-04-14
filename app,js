@@ -1,0 +1,89 @@
+var request = require('request')
+var express = require('express');
+var app = express();
+var port = 1337;
+var json = [];
+var cookie = "";
+var tw = {
+    email: 'xxxxxx@gmail.com',
+    password: 'xxxxxxx'
+};
+app.get('/json', function(req, res) {
+    main.request.history(function(html) {
+        var obj = JSON.parse(html);
+        res.send(obj.data.activities);
+    });
+});
+app.listen(port, function() {
+    console.log('AppComments on port http://127.0.0.1:' + port);
+});
+var main = {
+    request: {
+        headers: function() {
+            return {
+                'Host': 'wallet.truemoney.com',
+                'Origin': 'https://wallet.truemoney.com',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36',
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Cookie': cookie
+            };
+        },
+        load: function(callback) {
+            request({
+                url: 'https://wallet.truemoney.com/',
+                method: 'GET',
+                headers: main.request.headers
+            }, function(error, response, body) {
+                cookie = response.headers['set-cookie'];
+                callback(true);
+            });
+        },
+        login: function(auth, callback) {
+            request({
+                url: 'https://wallet.truemoney.com/user/login',
+                method: 'POST',
+                headers: main.request.headers,
+                form: {
+                    'email': auth.email,
+                    'password': auth.password
+                }
+            }, function(error, response, body) {
+                cookie = response.headers['set-cookie'];
+                callback(body);
+            });
+        },
+        home: function(callback) {
+            request({
+                url: 'https://wallet.truemoney.com/wallet#/myWallet',
+                method: 'GET',
+                headers: main.request.headers
+            }, function(error, response, body) {
+                cookie = response.headers['set-cookie'];
+                if (response.request.path !== '/user/login') {
+                    callback(true);
+                    console.log('TW:', "Login success.!");
+                } else {
+                    console.log('TW:', "Login fail.!");
+                    callback(false);
+                }
+            });
+        },
+        history: function(callback) {
+            request({
+                url: 'https://wallet.truemoney.com/api/transaction_history',
+                method: 'GET',
+                headers: main.request.headers
+            }, function(error, response, body) {
+                cookie = response.headers['set-cookie'];
+                callback(body);
+            });
+        }
+    }
+}
+main.request.login(tw, function() {
+    main.request.home(function(status) {
+        if (!status) {
+            process.exit(1);
+        }
+    });
+});
